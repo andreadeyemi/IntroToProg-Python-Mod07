@@ -1,11 +1,16 @@
 # ------------------------------------------------------------------------------------------ #
 # Title: Assignment07
-# Desc: This assignment demonstrates using data classes
-# with structured error handling
+# Desc: Python program that demonstrates using constants, variables, and print statements to 
+#       display a message about a student's registration for a Python course. This program is 
+#       very similar to Assignment05, but it adds the use of functions, classes, and using the 
+#       separation of concerns pattern.
 # Change Log: (Who, When, What)
 #   Andre Adeyemi, 2/26/2024, Created Script
 # ------------------------------------------------------------------------------------------ #
+
 import json
+from dataclasses import dataclass
+import os  # Import os module to check file existence
 
 # Define the Data Constants
 MENU: str = '''
@@ -24,110 +29,144 @@ students: list = []  # a table of student data
 menu_choice: str = ''  # Hold the choice made by the user.
 
 # Data Classes -------------------------------------------- #
-# ... (Person and Student classes) ...
+@dataclass
+class Person:
+    """Represents a person"""
+    first_name: str
+    last_name: str
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+
+@dataclass
+class Student(Person):
+    """Represents a student, inherits from Person"""
+    course_name: str
 
 class FileProcessor:
-    """Processes data to and from a file"""
-    
+    """
+    A collection of processing layer functions that work with Json files
+    """
     @staticmethod
-    def read_data_from_file(file_name: str, student_list: list) -> list:
-        """
-        Reads data from a file and converts it into a list of Student objects.
-        
-        :param file_name: The name of the file to read from.
-        :param student_list: The list where the student data will be stored.
-        :return: The updated list of students.
-        :raises: Exception if file reading fails.
-        """
+    def read_data_from_file(file_name: str, student_data: list):
+        """ This function reads data from a json file and loads it into a list of dictionary rows """
         try:
-            with open(file_name, 'r') as file:
-                data = json.load(file)
-                student_list.clear()
-                for student_data in data:
-                    student = Student(
-                        student_data['FirstName'],
-                        student_data['LastName'],
-                        student_data['CourseName']
-                    )
-                    student_list.append(student)
-        except FileNotFoundError:
-            print(f"No existing file named {file_name}. A new one will be created upon saving.")
+            if os.path.exists(file_name):  # Check if the file exists
+                with open(file_name, "r") as file:
+                    student_data = json.load(file)
+            else:
+                print(f"File '{file_name}' not found.")
         except Exception as e:
-            raise Exception(f"An error occurred while reading from file: {e}")
-        return student_list
+            IO.output_error_messages(message="Error: There was a problem with reading the file.", error=e)
+        return student_data
 
     @staticmethod
-    def write_data_to_file(file_name: str, student_list: list):
-        """
-        Writes the list of student objects to a file in JSON format.
-        
-        :param file_name: The name of the file to write to.
-        :param student_list: The list of students to write to the file.
-        :raises: Exception if file writing fails.
-        """
+    def write_data_to_file(file_name: str, student_data: list):
+        """ This function writes data to a json file with data from a list of dictionary rows """
         try:
-            with open(file_name, 'w') as file:
-                data = [student.to_dict() for student in student_list]
-                json.dump(data, file, indent=4)
-            print("Data saved successfully.")
+            with open(file_name, "w") as file:
+                json.dump(student_data, file)
+            IO.output_student_and_course_names(student_data=student_data)
         except Exception as e:
-            raise Exception(f"An error occurred while writing to file: {e}")
+            message = "Error: There was a problem with writing to the file.\n"
+            message += "Please check that the file is not open by another program."
+            IO.output_error_messages(message=message,error=e)
 
+# Presentation --------------------------------------- #
 class IO:
-    """Handles Input/Output tasks"""
-    
+    """
+    A collection of presentation layer functions that manage user input and output
+    """
     @staticmethod
-    def output_menu(menu_text: str):
-        """
-        Prints the menu text to the console.
-        
-        :param menu_text: The menu text to be displayed.
-        """
-        print(menu_text)
+    def output_error_messages(message: str, error: Exception = None):
+        """ This function displays the a custom error messages to the user """
+        print(message, end="\n\n")
+        if error is not None:
+            print("-- Technical Error Message -- ")
+            print(error, error.__doc__, type(error), sep='\n')
 
     @staticmethod
-    def input_menu_choice() -> str:
-        """
-        Gets the user's menu choice.
-        
-        :return: A string representing the user's menu choice.
-        """
-        return input("Please select a menu option: ").strip()
+    def output_menu(menu: str):
+        """ This function displays the menu of choices to the user """
+        print()  # Adding extra space to make it look nicer.
+        print(menu)
+        print()  # Adding extra space to make it look nicer.
 
     @staticmethod
-    def output_student_and_course_names(student_list: list):
-        """
-        Prints the names of the students and their courses to the console.
-        
-        :param student_list: The list of students to display.
-        """
-        print("--- Current Student Enrollments ---")
-        for student in student_list:
-            print(student)
-        print("-----------------------------------")
-
-    @staticmethod
-    def input_student_data(student_list: list):
-        """
-        Captures input for a new student and adds them to the student list.
-        
-        :param student_list: The list where the new student will be added.
-        """
+    def input_menu_choice():
+        """ This function gets a menu choice from the user """
+        choice = "0"
         try:
-            first_name = input("Enter the student's first name: ").strip()
-            last_name = input("Enter the student's last name: ").strip()
-            course_name = input("Enter the course name: ").strip()
-            # Create and add the new student object
-            student = Student(first_name, last_name, course_name)
-            student_list.append(student)
-            print(f"{student} has been registered.")
+            choice = input("Enter your menu choice number: ")
+            if choice not in ("1","2","3","4"):  # Note these are strings
+                raise Exception("Please, choose only 1, 2, 3, or 4")
+        except Exception as e:
+            IO.output_error_messages(e.__str__())  # Not passing e to avoid the technical message
+        return choice
+
+    @staticmethod
+    def output_student_and_course_names(student_data: list):
+        """ This function displays the student and course names to the user """
+        print("-" * 50)
+        for student in student_data:
+            print(f'Student {student.first_name} '  # Update to use attribute access
+                  f'{student.last_name} is enrolled in {student.course_name}')  # Update to use attribute access
+        print("-" * 50)
+
+    @staticmethod
+    def input_student_data(student_data: list):
+        """ This function gets the student's first name and last name, with a course name from the user """
+        try:
+            student_first_name = input("Enter the student's first name: ")
+            if not student_first_name.isalpha():
+                raise ValueError("The first name should only contain alphabetic characters.")
+            student_last_name = input("Enter the student's last name: ")
+            if not student_last_name.isalpha():
+                raise ValueError("The last name should only contain alphabetic characters.")
+            course_name = input("Please enter the name of the course: ")
+            student = Student(first_name=student_first_name, last_name=student_last_name, course_name=course_name)
+            student_data.append(student)
+            print()
+            print(f"You have registered {student_first_name} {student_last_name} for {course_name}.")
         except ValueError as e:
-            print(f"An error occurred while adding the student: {e}")
+            IO.output_error_messages(message="Error: One of the values was not of the correct type!", error=e)
+        except Exception as e:
+            IO.output_error_messages(message="Error: There was a problem with the entered data.", error=e)
+        return student_data
 
-# Main Body of Script  ------------------------------------------------------ #
-# ... (Code to load data and run the menu loop) ...
+# Start of main body
 
-# Ensure the script doesn't run if it's imported as a module
-if __name__ == "__main__":
-    # Your existing script to load data and run the menu loop
-    pass
+# When the program starts, read the file data into a list of lists (table)
+# Extract the data from the file
+students = FileProcessor.read_data_from_file(file_name=FILE_NAME, student_data=students)
+
+# Present and Process the data
+while (True):
+
+    # Present the menu of choices
+    IO.output_menu(menu=MENU)
+
+    menu_choice = IO.input_menu_choice()
+
+    # Input user data
+    if menu_choice == "1":  # This will not work if it is an integer!
+        students = IO.input_student_data(student_data=students)
+        continue
+
+    # Present the current data
+    elif menu_choice == "2":
+        IO.output_student_and_course_names(student_data=students)
+        continue
+
+    # Save the data to a file
+    elif menu_choice == "3":
+        FileProcessor.write_data_to_file(file_name=FILE_NAME, student_data=students)
+        continue
+
+    # Stop the loop
+    elif menu_choice == "4":
+        break  # out of the loop
+    else:
+        print("Please only choose option 1, 2, or 3")
+
+print("Program Ended")
